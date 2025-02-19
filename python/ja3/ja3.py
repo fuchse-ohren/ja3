@@ -5,8 +5,10 @@ import argparse
 import dpkt
 import json
 import socket
+import binascii
 import struct
 import os
+import csv
 from hashlib import md5
 
 __author__ = "Tommy Stallings"
@@ -15,7 +17,7 @@ __credits__ = ["John B. Althouse", "Jeff Atkinson", "Josh Atkins"]
 __license__ = "BSD 3-Clause License"
 __version__ = "1.0.0"
 __maintainer__ = "Tommy Stallings, Brandon Dixon"
-__email__ = "tommy.stallings@salesforce.com"
+__email__ = "tommy.stallings2@gmail.com"
 
 
 GREASE_TABLE = {0x0a0a: True, 0x1a1a: True, 0x2a2a: True, 0x3a3a: True,
@@ -223,7 +225,8 @@ def process_pcap(pcap, any_port=False):
                       "destination_port": tcp.dport,
                       "ja3": ja3,
                       "ja3_digest": md5(ja3.encode()).hexdigest(),
-                      "timestamp": timestamp}
+                      "timestamp": timestamp,
+                      "client_hello_pkt": binascii.hexlify(tcp.data).decode('utf-8')}
             results.append(record)
 
     return results
@@ -240,7 +243,13 @@ def main():
                         help=help_text)
     help_text = "Print out as JSON records for downstream parsing"
     parser.add_argument("-j", "--json", required=False, action="store_true",
-                        default=True, help=help_text)
+                        default=False, help=help_text)
+    help_text = "Print out as CSV records for downstream parsing"
+    parser.add_argument("-c", "--csv", required=False, action="store_true",
+                        default=False, help=help_text)
+    help_text = "Print packet related data for research (json only)"
+    parser.add_argument("-r", "--research", required=False, action="store_true",
+                        default=False, help=help_text)
     args = parser.parse_args()
 
     # Use an iterator to process each line of the file
@@ -258,9 +267,11 @@ def main():
                         (e_pcap, e_pcapng))
         output = process_pcap(capture, any_port=args.any_port)
 
-    if args.json:
-        output = json.dumps(output, indent=4, sort_keys=True)
-        print(output)
+    if args.json or args.csv:
+        if not args.research:
+            def remove_items(x):
+                del x['client_hello_pkt']
+            list(map(remove_items,output))
     else:
         for record in output:
             tmp = '[{dest}:{port}] JA3: {segment} --> {digest}'
@@ -270,6 +281,15 @@ def main():
                              digest=record['ja3_digest'])
             print(tmp)
 
+    if args.json:
+        output = json.dumps(output, indent=4, sort_keys=True)
+        print(output)
+    if args.csv:
+        keys = ['source_ip', 'destination_ip', 'source_port', 'destination_port', 'ja3', 'ja3_digest', 'timestamp']
+        with open(args.pcap+'.ja3', 'w') as output_file:
+            dict_writer = csv.DictWriter(output_file, keys)
+            dict_writer.writeheader()
+            dict_writer.writerows(output)
 
 if __name__ == "__main__":
         main()

@@ -8,6 +8,7 @@ import socket
 import binascii
 import struct
 import os
+import csv
 from hashlib import md5
 
 __author__ = "Tommy Stallings"
@@ -243,6 +244,9 @@ def main():
     help_text = "Print out as JSON records for downstream parsing"
     parser.add_argument("-j", "--json", required=False, action="store_true",
                         default=False, help=help_text)
+    help_text = "Print out as CSV records for downstream parsing"
+    parser.add_argument("-c", "--csv", required=False, action="store_true",
+                        default=False, help=help_text)
     help_text = "Print packet related data for research (json only)"
     parser.add_argument("-r", "--research", required=False, action="store_true",
                         default=False, help=help_text)
@@ -263,13 +267,11 @@ def main():
                         (e_pcap, e_pcapng))
         output = process_pcap(capture, any_port=args.any_port)
 
-    if args.json:
+    if args.json or args.csv:
         if not args.research:
             def remove_items(x):
                 del x['client_hello_pkt']
             list(map(remove_items,output))
-        output = json.dumps(output, indent=4, sort_keys=True)
-        print(output)
     else:
         for record in output:
             tmp = '[{dest}:{port}] JA3: {segment} --> {digest}'
@@ -279,6 +281,15 @@ def main():
                              digest=record['ja3_digest'])
             print(tmp)
 
+    if args.json:
+        output = json.dumps(output, indent=4, sort_keys=True)
+        print(output)
+    if args.csv:
+        keys = ['source_ip', 'destination_ip', 'source_port', 'destination_port', 'ja3', 'ja3_digest', 'timestamp']
+        with open(args.pcap+'.ja3', 'w') as output_file:
+            dict_writer = csv.DictWriter(output_file, keys)
+            dict_writer.writeheader()
+            dict_writer.writerows(output)
 
 if __name__ == "__main__":
         main()
