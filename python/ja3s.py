@@ -4,6 +4,7 @@
 import argparse
 import dpkt
 import json
+import csv
 import socket
 import struct
 import os
@@ -163,6 +164,8 @@ def main():
     help_text = "Print out as JSON records for downstream parsing"
     parser.add_argument("-j", "--json", required=False, action="store_true",
                         default=False, help=help_text)
+    parser.add_argument("-c", "--csv", required=False, action="store_true",
+                        default=False, help=help_text)
     args = parser.parse_args()
 
     # Use an iterator to process each line of the file
@@ -183,6 +186,13 @@ def main():
     if args.json:
         output = json.dumps(output, indent=4, sort_keys=True)
         print(output)
+    if args.csv:
+        keys = ['source_ip', 'destination_ip', 'source_port', 'destination_port', 'ja3', 'ja3_digest', 'timestamp']
+        with open(args.pcap+'.ja3s', 'w') as output_file:
+            dict_writer = csv.DictWriter(output_file, keys)
+            dict_writer.writeheader()
+            dict_writer.writerows(output)
+
     else:
         for record in output:
             tmp = '[{dest}:{port}] JA3S: {segment} --> {digest}'
