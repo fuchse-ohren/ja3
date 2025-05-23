@@ -7,6 +7,7 @@ import json
 import csv
 import socket
 import struct
+import tls13_emu
 import os
 from hashlib import md5
 from distutils.version import LooseVersion
@@ -139,6 +140,9 @@ def process_pcap(pcap, any_port=False):
                 ja3.append(str(server_handshake.ciphersuite.code))
             ja3 += process_extensions(server_handshake)
             ja3 = ",".join(ja3)
+
+            #tls1.3 emu
+            ja3 = tls13_emu.ja3_tls13(ja3)
 
             record = {"source_ip": convert_ip(ip.src),
                       "destination_ip": convert_ip(ip.dst),

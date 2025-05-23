@@ -98,7 +98,7 @@ def convert_to_ja3_segment(data, element_width):
         element = ntoh(data[i: i + element_width])
         if element not in GREASE_TABLE:
             int_vals.append(element)
-
+    
     return "-".join(str(x) for x in int_vals)
 
 
